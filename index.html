@@ -1,30 +1,33 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Contador Inteligente de Parafusos</title>
-  <link rel="stylesheet" href="style.css">
-  <script async src="https://docs.opencv.org/4.x/opencv.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contador de Parafusos</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://docs.opencv.org/4.x/opencv.js"></script>
 </head>
+
 <body>
 
 <div class="container">
+
   <h2>Contador Inteligente</h2>
 
   <video id="video" autoplay playsinline></video>
+
   <canvas id="canvas"></canvas>
 
-  <div class="info">
-    <h3>Quantidade Detectada: <span id="count">0</span></h3>
-  </div>
+  <h3>Quantidade: <span id="count">0</span></h3>
 
   <div class="buttons">
-    <button onclick="capture()">📸 Capturar</button>
-    <button onclick="calibrate()">🎯 Calibrar</button>
+    <button id="btnCapture">📸 Capturar</button>
+    <button id="btnCalibrate">🎯 Calibrar</button>
   </div>
+
 </div>
 
 <script src="script.js"></script>
+
 </body>
 </html>
