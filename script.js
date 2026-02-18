@@ -96,12 +96,9 @@ window.addEventListener("load", () => {
 
     cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
 
-    // 🔥 Blur moderado
     cv.GaussianBlur(gray, blur, new cv.Size(5, 5), 0);
 
-    // 🔥 Ajuste manual leve (melhora contraste)
-    cv.convertScaleAbs(blur, blur, 1.3, -20);
-
+    // Fundo escuro
     cv.threshold(
         blur,
         thresh,
@@ -111,11 +108,11 @@ window.addEventListener("load", () => {
     );
 
     let kernel = cv.getStructuringElement(
-        cv.MORPH_ELLIPSE,
-        new cv.Size(4, 4)
+        cv.MORPH_RECT,
+        new cv.Size(5, 5)
     );
 
-    cv.morphologyEx(thresh, morph, cv.MORPH_OPEN, kernel);
+    cv.morphologyEx(thresh, morph, cv.MORPH_CLOSE, kernel);
 
     let contours = new cv.MatVector();
     let hierarchy = new cv.Mat();
@@ -135,23 +132,25 @@ window.addEventListener("load", () => {
         let cnt = contours.get(i);
         let area = cv.contourArea(cnt);
 
-        // 🔥 DIMINUÍMOS ÁREA
-        if (area < 300) continue;
+        if (area < 500) continue;
 
-        let perimeter = cv.arcLength(cnt, true);
-        let circularity = (4 * Math.PI * area) / (perimeter * perimeter);
+        let rect = cv.boundingRect(cnt);
 
-        if (circularity < 0.4) continue;
+        let aspectRatio = rect.width / rect.height;
 
-        count++;
+        // 🔥 Detecta objetos alongados (parafusos)
+        if (aspectRatio > 2.0 || aspectRatio < 0.5) {
 
-        cv.drawContours(
-            src,
-            contours,
-            i,
-            new cv.Scalar(0, 255, 0, 255),
-            2
-        );
+            count++;
+
+            cv.rectangle(
+                src,
+                new cv.Point(rect.x, rect.y),
+                new cv.Point(rect.x + rect.width, rect.y + rect.height),
+                new cv.Scalar(0, 255, 0, 255),
+                3
+            );
+        }
     }
 
     countText.innerText = count;
@@ -167,6 +166,7 @@ window.addEventListener("load", () => {
     hierarchy.delete();
     kernel.delete();
 }
+
 
 
 });
