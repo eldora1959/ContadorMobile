@@ -89,26 +89,25 @@ window.addEventListener("load", () => {
   function processImage() {
 
     let src = cv.imread(canvas);
-    let hsv = new cv.Mat();
-    let mask = new cv.Mat();
+    let gray = new cv.Mat();
+    let edges = new cv.Mat();
     let morph = new cv.Mat();
 
-    // 🔥 Trabalhar em HSV (melhor para brilho)
-    cv.cvtColor(src, hsv, cv.COLOR_RGBA2RGB);
-    cv.cvtColor(hsv, hsv, cv.COLOR_RGB2HSV);
+    cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
 
-    // 🔥 Detectar regiões claras (valor alto)
-    let lower = new cv.Mat(hsv.rows, hsv.cols, hsv.type(), [0, 0, 120, 0]);
-    let upper = new cv.Mat(hsv.rows, hsv.cols, hsv.type(), [180, 80, 255, 255]);
+    // 🔥 Blur leve
+    cv.GaussianBlur(gray, gray, new cv.Size(5, 5), 0);
 
-    cv.inRange(hsv, lower, upper, mask);
+    // 🔥 Detectar bordas
+    cv.Canny(gray, edges, 50, 150);
 
+    // 🔥 Fechar falhas nas bordas
     let kernel = cv.getStructuringElement(
         cv.MORPH_RECT,
-        new cv.Size(7, 7)
+        new cv.Size(5, 5)
     );
 
-    cv.morphologyEx(mask, morph, cv.MORPH_CLOSE, kernel);
+    cv.morphologyEx(edges, morph, cv.MORPH_CLOSE, kernel);
 
     let contours = new cv.MatVector();
     let hierarchy = new cv.Mat();
@@ -128,7 +127,7 @@ window.addEventListener("load", () => {
         let cnt = contours.get(i);
         let area = cv.contourArea(cnt);
 
-        if (area < 800) continue;
+        if (area < 1000) continue;
 
         count++;
 
@@ -148,14 +147,12 @@ window.addEventListener("load", () => {
     cv.imshow(canvas, src);
 
     src.delete();
-    hsv.delete();
-    mask.delete();
+    gray.delete();
+    edges.delete();
     morph.delete();
     contours.delete();
     hierarchy.delete();
     kernel.delete();
-    lower.delete();
-    upper.delete();
 }
 
 
