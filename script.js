@@ -90,24 +90,29 @@ window.addEventListener("load", () => {
 
     let src = cv.imread(canvas);
     let gray = new cv.Mat();
-    let edges = new cv.Mat();
+    let thresh = new cv.Mat();
     let morph = new cv.Mat();
 
     cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
 
-    // 🔥 Blur leve
-    cv.GaussianBlur(gray, gray, new cv.Size(5, 5), 0);
+    cv.GaussianBlur(gray, gray, new cv.Size(5,5), 0);
 
-    // 🔥 Detectar bordas
-    cv.Canny(gray, edges, 50, 150);
-
-    // 🔥 Fechar falhas nas bordas
-    let kernel = cv.getStructuringElement(
-        cv.MORPH_RECT,
-        new cv.Size(5, 5)
+    cv.adaptiveThreshold(
+        gray,
+        thresh,
+        255,
+        cv.ADAPTIVE_THRESH_GAUSSIAN_C,
+        cv.THRESH_BINARY_INV,
+        15,
+        2
     );
 
-    cv.morphologyEx(edges, morph, cv.MORPH_CLOSE, kernel);
+    let kernel = cv.getStructuringElement(
+        cv.MORPH_RECT,
+        new cv.Size(2,2)
+    );
+
+    cv.morphologyEx(thresh, morph, cv.MORPH_OPEN, kernel);
 
     let contours = new cv.MatVector();
     let hierarchy = new cv.Mat();
@@ -127,19 +132,25 @@ window.addEventListener("load", () => {
         let cnt = contours.get(i);
         let area = cv.contourArea(cnt);
 
-        if (area < 1000) continue;
-
-        count++;
+        if (area < 900) continue;
 
         let rect = cv.boundingRect(cnt);
 
-        cv.rectangle(
-            src,
-            new cv.Point(rect.x, rect.y),
-            new cv.Point(rect.x + rect.width, rect.y + rect.height),
-            new cv.Scalar(0, 255, 0, 255),
-            3
-        );
+        let ratio = rect.width / rect.height;
+
+        // 🔥 Detectar formato alongado
+        if (ratio > 2 || ratio < 0.5) {
+
+            count++;
+
+            cv.rectangle(
+                src,
+                new cv.Point(rect.x, rect.y),
+                new cv.Point(rect.x + rect.width, rect.y + rect.height),
+                new cv.Scalar(0, 255, 0, 255),
+                2
+            );
+        }
     }
 
     countText.innerText = count;
@@ -148,7 +159,7 @@ window.addEventListener("load", () => {
 
     src.delete();
     gray.delete();
-    edges.delete();
+    thresh.delete();
     morph.delete();
     contours.delete();
     hierarchy.delete();
