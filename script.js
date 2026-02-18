@@ -77,74 +77,99 @@ window.addEventListener("load", () => {
   // ===============================
   function processImage() {
 
-      let src = cv.imread(canvas);
-      let gray = new cv.Mat();
-      let blur = new cv.Mat();
-      let thresh = new cv.Mat();
+    let src = cv.imread(canvas);
+    let gray = new cv.Mat();
+    let blur = new cv.Mat();
+    let thresh = new cv.Mat();
+    let morph = new cv.Mat();
 
-      cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+    cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
 
-      // melhora contraste
-      let clahe = new cv.CLAHE(2.0, new cv.Size(8, 8));
-      clahe.apply(gray, gray);
+    // 🔹 Melhora contraste
+    let clahe = new cv.CLAHE(2.0, new cv.Size(8, 8));
+    clahe.apply(gray, gray);
 
-      cv.GaussianBlur(gray, blur, new cv.Size(5, 5), 0);
+    cv.GaussianBlur(gray, blur, new cv.Size(5, 5), 0);
 
-      cv.threshold(
-          blur,
-          thresh,
-          0,
-          255,
-          cv.THRESH_BINARY_INV + cv.THRESH_OTSU
-      );
+    // 🔹 Threshold automático
+    cv.threshold(
+        blur,
+        thresh,
+        0,
+        255,
+        cv.THRESH_BINARY_INV + cv.THRESH_OTSU
+    );
 
-      let contours = new cv.MatVector();
-      let hierarchy = new cv.Mat();
+    // 🔥 REMOVE RUÍDO (morfologia abertura)
+    let kernel = cv.getStructuringElement(
+        cv.MORPH_ELLIPSE,
+        new cv.Size(5, 5)
+    );
 
-      cv.findContours(
-          thresh,
-          contours,
-          hierarchy,
-          cv.RETR_EXTERNAL,
-          cv.CHAIN_APPROX_SIMPLE
-      );
+    cv.morphologyEx(
+        thresh,
+        morph,
+        cv.MORPH_OPEN,
+        kernel
+    );
 
-      let count = 0;
+    let contours = new cv.MatVector();
+    let hierarchy = new cv.Mat();
 
-      for (let i = 0; i < contours.size(); i++) {
+    cv.findContours(
+        morph,
+        contours,
+        hierarchy,
+        cv.RETR_EXTERNAL,
+        cv.CHAIN_APPROX_SIMPLE
+    );
 
-          let cnt = contours.get(i);
-          let area = cv.contourArea(cnt);
+    let count = 0;
 
-          if (area < minArea) continue;
+    for (let i = 0; i < contours.size(); i++) {
 
-          let perimeter = cv.arcLength(cnt, true);
-          let circularity = (4 * Math.PI * area) / (perimeter * perimeter);
+        let cnt = contours.get(i);
+        let area = cv.contourArea(cnt);
 
-          if (circularity > circularityThreshold) {
-              count++;
-              cv.drawContours(
-                  src,
-                  contours,
-                  i,
-                  new cv.Scalar(0, 255, 0, 255),
-                  2
-              );
-          }
-      }
+        // 🔥 FILTRO DE ÁREA (aumentamos)
+        if (area < minArea || area > 50000) continue;
 
-      countText.innerText = count;
+        let perimeter = cv.arcLength(cnt, true);
+        let circularity = (4 * Math.PI * area) / (perimeter * perimeter);
 
-      cv.imshow(canvas, src);
+        // 🔥 FILTRO MAIS RÍGIDO
+        if (circularity < 0.75) continue;
 
-      // liberar memória
-      src.delete();
-      gray.delete();
-      blur.delete();
-      thresh.delete();
-      contours.delete();
-      hierarchy.delete();
-  }
+        // 🔥 FILTRO POR TAMANHO REAL (bounding box)
+        let rect = cv.boundingRect(cnt);
+
+        if (rect.width < 20 || rect.height < 20) continue;
+
+        count++;
+
+        cv.drawContours(
+            src,
+            contours,
+            i,
+            new cv.Scalar(0, 255, 0, 255),
+            2
+        );
+    }
+
+    countText.innerText = count;
+
+    cv.imshow(canvas, src);
+
+    src.delete();
+    gray.delete();
+    blur.delete();
+    thresh.delete();
+    morph.delete();
+    contours.delete();
+    hierarchy.delete();
+    kernel.delete();
+}
+
 
   // ===============================
   // CALIBRAÇÃO AUTOMÁTICA
