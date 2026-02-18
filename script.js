@@ -8,7 +8,7 @@ window.addEventListener("load", () => {
   const btnCalibrate = document.getElementById("btnCalibrate");
   const btnBack = document.getElementById("btnBack");
 
-  let minArea = 400;
+  let minArea = 800;
   let circularityThreshold = 0.6;
   let opencvReady = false;
 
@@ -96,10 +96,12 @@ window.addEventListener("load", () => {
 
     cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
 
-    // 🔥 Blur mais forte para eliminar brilho pequeno
-    cv.GaussianBlur(gray, blur, new cv.Size(7, 7), 0);
+    // 🔥 Blur moderado
+    cv.GaussianBlur(gray, blur, new cv.Size(5, 5), 0);
 
-    // 🔥 Fundo escuro padrão
+    // 🔥 Ajuste manual leve (melhora contraste)
+    cv.convertScaleAbs(blur, blur, 1.3, -20);
+
     cv.threshold(
         blur,
         thresh,
@@ -108,14 +110,12 @@ window.addEventListener("load", () => {
         cv.THRESH_BINARY + cv.THRESH_OTSU
     );
 
-    // 🔥 Kernel maior remove pontos pequenos
     let kernel = cv.getStructuringElement(
         cv.MORPH_ELLIPSE,
-        new cv.Size(5, 5)
+        new cv.Size(4, 4)
     );
 
     cv.morphologyEx(thresh, morph, cv.MORPH_OPEN, kernel);
-    cv.morphologyEx(morph, morph, cv.MORPH_CLOSE, kernel);
 
     let contours = new cv.MatVector();
     let hierarchy = new cv.Mat();
@@ -135,18 +135,13 @@ window.addEventListener("load", () => {
         let cnt = contours.get(i);
         let area = cv.contourArea(cnt);
 
-        // 🔥 AUMENTAMOS FILTRO DE ÁREA
-        if (area < minArea) continue;
-
-        let rect = cv.boundingRect(cnt);
-
-        // 🔥 Ignora objetos muito finos (brilhos)
-        if (rect.width < 20 || rect.height < 20) continue;
+        // 🔥 DIMINUÍMOS ÁREA
+        if (area < 300) continue;
 
         let perimeter = cv.arcLength(cnt, true);
         let circularity = (4 * Math.PI * area) / (perimeter * perimeter);
 
-        if (circularity < 0.5) continue;
+        if (circularity < 0.4) continue;
 
         count++;
 
@@ -155,7 +150,7 @@ window.addEventListener("load", () => {
             contours,
             i,
             new cv.Scalar(0, 255, 0, 255),
-            3
+            2
         );
     }
 
