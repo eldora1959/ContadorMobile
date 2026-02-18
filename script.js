@@ -89,30 +89,26 @@ window.addEventListener("load", () => {
   function processImage() {
 
     let src = cv.imread(canvas);
-    let gray = new cv.Mat();
-    let blur = new cv.Mat();
-    let thresh = new cv.Mat();
+    let hsv = new cv.Mat();
+    let mask = new cv.Mat();
     let morph = new cv.Mat();
 
-    cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+    // 🔥 Trabalhar em HSV (melhor para brilho)
+    cv.cvtColor(src, hsv, cv.COLOR_RGBA2RGB);
+    cv.cvtColor(hsv, hsv, cv.COLOR_RGB2HSV);
 
-    cv.GaussianBlur(gray, blur, new cv.Size(5, 5), 0);
+    // 🔥 Detectar regiões claras (valor alto)
+    let lower = new cv.Mat(hsv.rows, hsv.cols, hsv.type(), [0, 0, 120, 0]);
+    let upper = new cv.Mat(hsv.rows, hsv.cols, hsv.type(), [180, 80, 255, 255]);
 
-    // Fundo escuro
-    cv.threshold(
-        blur,
-        thresh,
-        0,
-        255,
-        cv.THRESH_BINARY + cv.THRESH_OTSU
-    );
+    cv.inRange(hsv, lower, upper, mask);
 
     let kernel = cv.getStructuringElement(
         cv.MORPH_RECT,
-        new cv.Size(5, 5)
+        new cv.Size(7, 7)
     );
 
-    cv.morphologyEx(thresh, morph, cv.MORPH_CLOSE, kernel);
+    cv.morphologyEx(mask, morph, cv.MORPH_CLOSE, kernel);
 
     let contours = new cv.MatVector();
     let hierarchy = new cv.Mat();
@@ -132,25 +128,19 @@ window.addEventListener("load", () => {
         let cnt = contours.get(i);
         let area = cv.contourArea(cnt);
 
-        if (area < 500) continue;
+        if (area < 800) continue;
+
+        count++;
 
         let rect = cv.boundingRect(cnt);
 
-        let aspectRatio = rect.width / rect.height;
-
-        // 🔥 Detecta objetos alongados (parafusos)
-        if (aspectRatio > 2.0 || aspectRatio < 0.5) {
-
-            count++;
-
-            cv.rectangle(
-                src,
-                new cv.Point(rect.x, rect.y),
-                new cv.Point(rect.x + rect.width, rect.y + rect.height),
-                new cv.Scalar(0, 255, 0, 255),
-                3
-            );
-        }
+        cv.rectangle(
+            src,
+            new cv.Point(rect.x, rect.y),
+            new cv.Point(rect.x + rect.width, rect.y + rect.height),
+            new cv.Scalar(0, 255, 0, 255),
+            3
+        );
     }
 
     countText.innerText = count;
@@ -158,13 +148,14 @@ window.addEventListener("load", () => {
     cv.imshow(canvas, src);
 
     src.delete();
-    gray.delete();
-    blur.delete();
-    thresh.delete();
+    hsv.delete();
+    mask.delete();
     morph.delete();
     contours.delete();
     hierarchy.delete();
     kernel.delete();
+    lower.delete();
+    upper.delete();
 }
 
 
