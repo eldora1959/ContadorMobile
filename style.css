@@ -7,35 +7,42 @@ body {
 }
 
 .container {
-  padding: 10px;
+  padding-bottom: 100px; /* espaço para botões fixos */
 }
 
-video, canvas {
+video {
   width: 100%;
-  max-width: 480px;
-  border-radius: 10px;
-  margin-top: 10px;
+  max-height: 60vh;
+  object-fit: cover;
+}
+
+canvas {
+  width: 100%;
+  display: none; /* só aparece após capturar */
 }
 
 .buttons {
-  margin-top: 15px;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: #000;
+  padding: 15px;
+  display: flex;
+  justify-content: space-around;
+  box-shadow: 0 -2px 10px rgba(0,0,0,0.5);
 }
 
 button {
-  padding: 12px;
-  margin: 5px;
+  padding: 15px 20px;
   font-size: 16px;
-  border-radius: 8px;
+  border-radius: 10px;
   border: none;
-  cursor: pointer;
-}
-
-button:first-child {
   background: #2196F3;
   color: white;
+  width: 45%;
 }
 
-button:last-child {
-  background: #4CAF50;
-  color: white;
+h3 {
+  margin: 10px 0;
 }
