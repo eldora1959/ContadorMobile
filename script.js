@@ -1,4 +1,3 @@
-// Espera a página carregar completamente
 window.addEventListener("load", () => {
 
   const video = document.getElementById("video");
@@ -9,14 +8,15 @@ window.addEventListener("load", () => {
 
   let minArea = 400;
   let circularityThreshold = 0.6;
+  let opencvReady = false;
 
-  // 🔹 Garantir que os botões existam
-  if (!btnCapture || !btnCalibrate) {
-      console.error("Botões não encontrados no HTML.");
-      return;
-  }
+  // 🔥 ESPERAR OPENCV CARREGAR
+  cv['onRuntimeInitialized'] = () => {
+      console.log("OpenCV carregado");
+      opencvReady = true;
+  };
 
-  // 🔹 Ativar câmera traseira
+  // 🎥 ATIVAR CÂMERA
   navigator.mediaDevices.getUserMedia({
       video: {
           facingMode: { ideal: "environment" },
@@ -31,23 +31,13 @@ window.addEventListener("load", () => {
       alert("Erro ao acessar câmera: " + err);
   });
 
-  // 🔹 Evento botão Capturar
+  // =========================
+  // BOTÃO CAPTURAR
+  // =========================
   btnCapture.addEventListener("click", () => {
-      capture();
-  });
 
-  // 🔹 Evento botão Calibrar
-  btnCalibrate.addEventListener("click", () => {
-      calibrate();
-  });
-
-  // =========================
-  // 📸 CAPTURA
-  // =========================
-  function capture() {
-
-      if (typeof cv === "undefined") {
-          alert("OpenCV ainda não carregou.");
+      if (!opencvReady) {
+          alert("OpenCV ainda está carregando...");
           return;
       }
 
@@ -59,10 +49,23 @@ window.addEventListener("load", () => {
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
       processImage();
-  }
+  });
 
   // =========================
-  // 🔍 PROCESSAMENTO
+  // BOTÃO CALIBRAR
+  // =========================
+  btnCalibrate.addEventListener("click", () => {
+
+      if (!opencvReady) {
+          alert("OpenCV ainda está carregando...");
+          return;
+      }
+
+      calibrate();
+  });
+
+  // =========================
+  // PROCESSAMENTO
   // =========================
   function processImage() {
 
@@ -73,7 +76,6 @@ window.addEventListener("load", () => {
 
       cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
 
-      // CLAHE (melhora contraste)
       let clahe = new cv.CLAHE(2.0, new cv.Size(8, 8));
       clahe.apply(gray, gray);
 
@@ -135,15 +137,15 @@ window.addEventListener("load", () => {
   }
 
   // =========================
-  // 🎯 CALIBRAÇÃO
+  // CALIBRAÇÃO
   // =========================
   function calibrate() {
 
-      alert("Coloque apenas 1 parafuso na tela e pressione OK.");
-
       const ctx = canvas.getContext("2d");
+
       canvas.width = 640;
       canvas.height = 480;
+
       ctx.drawImage(video, 0, 0);
 
       let src = cv.imread(canvas);
