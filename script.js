@@ -88,137 +88,90 @@ window.addEventListener("load", () => {
   // ===============================
   function processImage() {
 
-      let src = cv.imread(canvas);
-      let gray = new cv.Mat();
-      let blur = new cv.Mat();
-      let thresh = new cv.Mat();
-      let morph = new cv.Mat();
+    let src = cv.imread(canvas);
+    let gray = new cv.Mat();
+    let blur = new cv.Mat();
+    let thresh = new cv.Mat();
+    let morph = new cv.Mat();
 
-      cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+    cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
 
-      cv.GaussianBlur(gray, blur, new cv.Size(5, 5), 0);
+    // 🔥 Blur mais forte para eliminar brilho pequeno
+    cv.GaussianBlur(gray, blur, new cv.Size(7, 7), 0);
 
-      cv.threshold(
-          blur,
-          thresh,
-          0,
-          255,
-          cv.THRESH_BINARY_INV + cv.THRESH_OTSU
-      );
+    // 🔥 Fundo escuro padrão
+    cv.threshold(
+        blur,
+        thresh,
+        0,
+        255,
+        cv.THRESH_BINARY + cv.THRESH_OTSU
+    );
 
-      let kernel = cv.getStructuringElement(
-          cv.MORPH_ELLIPSE,
-          new cv.Size(3, 3)
-      );
+    // 🔥 Kernel maior remove pontos pequenos
+    let kernel = cv.getStructuringElement(
+        cv.MORPH_ELLIPSE,
+        new cv.Size(5, 5)
+    );
 
-      cv.morphologyEx(thresh, morph, cv.MORPH_OPEN, kernel);
+    cv.morphologyEx(thresh, morph, cv.MORPH_OPEN, kernel);
+    cv.morphologyEx(morph, morph, cv.MORPH_CLOSE, kernel);
 
-      let contours = new cv.MatVector();
-      let hierarchy = new cv.Mat();
+    let contours = new cv.MatVector();
+    let hierarchy = new cv.Mat();
 
-      cv.findContours(
-          morph,
-          contours,
-          hierarchy,
-          cv.RETR_EXTERNAL,
-          cv.CHAIN_APPROX_SIMPLE
-      );
+    cv.findContours(
+        morph,
+        contours,
+        hierarchy,
+        cv.RETR_EXTERNAL,
+        cv.CHAIN_APPROX_SIMPLE
+    );
 
-      let count = 0;
+    let count = 0;
 
-      for (let i = 0; i < contours.size(); i++) {
+    for (let i = 0; i < contours.size(); i++) {
 
-          let cnt = contours.get(i);
-          let area = cv.contourArea(cnt);
+        let cnt = contours.get(i);
+        let area = cv.contourArea(cnt);
 
-          if (area < minArea) continue;
+        // 🔥 AUMENTAMOS FILTRO DE ÁREA
+        if (area < minArea) continue;
 
-          let perimeter = cv.arcLength(cnt, true);
-          let circularity = (4 * Math.PI * area) / (perimeter * perimeter);
+        let rect = cv.boundingRect(cnt);
 
-          if (circularity < circularityThreshold) continue;
+        // 🔥 Ignora objetos muito finos (brilhos)
+        if (rect.width < 20 || rect.height < 20) continue;
 
-          count++;
+        let perimeter = cv.arcLength(cnt, true);
+        let circularity = (4 * Math.PI * area) / (perimeter * perimeter);
 
-          cv.drawContours(
-              src,
-              contours,
-              i,
-              new cv.Scalar(0, 255, 0, 255),
-              2
-          );
-      }
+        if (circularity < 0.5) continue;
 
-      countText.innerText = count;
+        count++;
 
-      cv.imshow(canvas, src);
+        cv.drawContours(
+            src,
+            contours,
+            i,
+            new cv.Scalar(0, 255, 0, 255),
+            3
+        );
+    }
 
-      src.delete();
-      gray.delete();
-      blur.delete();
-      thresh.delete();
-      morph.delete();
-      contours.delete();
-      hierarchy.delete();
-      kernel.delete();
-  }
+    countText.innerText = count;
 
-  // ===============================
-  // CALIBRAÇÃO
-  // ===============================
-  function calibrate() {
+    cv.imshow(canvas, src);
 
-      alert("Coloque apenas 1 parafuso na tela e pressione OK.");
+    src.delete();
+    gray.delete();
+    blur.delete();
+    thresh.delete();
+    morph.delete();
+    contours.delete();
+    hierarchy.delete();
+    kernel.delete();
+}
 
-      const ctx = canvas.getContext("2d");
-
-      canvas.width = 640;
-      canvas.height = 480;
-
-      ctx.drawImage(video, 0, 0);
-
-      let src = cv.imread(canvas);
-      let gray = new cv.Mat();
-      let thresh = new cv.Mat();
-
-      cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
-
-      cv.threshold(
-          gray,
-          thresh,
-          0,
-          255,
-          cv.THRESH_BINARY_INV + cv.THRESH_OTSU
-      );
-
-      let contours = new cv.MatVector();
-      let hierarchy = new cv.Mat();
-
-      cv.findContours(
-          thresh,
-          contours,
-          hierarchy,
-          cv.RETR_EXTERNAL,
-          cv.CHAIN_APPROX_SIMPLE
-      );
-
-      if (contours.size() > 0) {
-
-          let cnt = contours.get(0);
-          let area = cv.contourArea(cnt);
-
-          minArea = area * 0.5;
-
-          alert("Calibração concluída!");
-      } else {
-          alert("Nenhum objeto detectado.");
-      }
-
-      src.delete();
-      gray.delete();
-      thresh.delete();
-      contours.delete();
-      hierarchy.delete();
-  }
 
 });

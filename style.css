@@ -6,43 +6,42 @@ body {
   text-align: center;
 }
 
-.container {
-  padding-bottom: 100px; /* espaço para botões fixos */
-}
-
-video {
+video, canvas {
   width: 100%;
   max-height: 60vh;
   object-fit: cover;
 }
 
-canvas {
-  width: 100%;
-  display: none; /* só aparece após capturar */
+h3 {
+  margin: 15px 0;
 }
 
 .buttons {
   position: fixed;
   bottom: 0;
-  left: 0;
   width: 100%;
-  background: #000;
-  padding: 15px;
   display: flex;
-  justify-content: space-around;
-  box-shadow: 0 -2px 10px rgba(0,0,0,0.5);
+  justify-content: center;
+  gap: 20px; /* 🔥 Espaçamento */
+  padding: 20px;
+  background: #000;
 }
 
 button {
-  padding: 15px 20px;
-  font-size: 16px;
-  border-radius: 10px;
+  flex: 1;
+  max-width: 150px;
+  padding: 15px;
   border: none;
-  background: #2196F3;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: bold;
+  background-color: #ff7a00; /* 🔥 LARANJA */
   color: white;
-  width: 45%;
+  cursor: pointer;
+  transition: 0.2s;
 }
 
-h3 {
-  margin: 10px 0;
+button:active {
+  transform: scale(0.95);
+  background-color: #e66800;
 }
