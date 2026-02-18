@@ -1,0 +1,41 @@
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #111;
+  color: white;
+  text-align: center;
+}
+
+.container {
+  padding: 10px;
+}
+
+video, canvas {
+  width: 100%;
+  max-width: 480px;
+  border-radius: 10px;
+  margin-top: 10px;
+}
+
+.buttons {
+  margin-top: 15px;
+}
+
+button {
+  padding: 12px;
+  margin: 5px;
+  font-size: 16px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+}
+
+button:first-child {
+  background: #2196F3;
+  color: white;
+}
+
+button:last-child {
+  background: #4CAF50;
+  color: white;
+}
