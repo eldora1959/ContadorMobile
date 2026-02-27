@@ -1,47 +1,208 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Contador Inteligente de Itens</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contador de Parafusos</title>
 
-  <!-- OpenCV -->
-  <script src="https://docs.opencv.org/4.x/opencv.js"></script>
+<script async src="https://docs.opencv.org/4.x/opencv.js"></script>
 
-  <link rel="stylesheet" href="style.css">
+<style>
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #111;
+  color: white;
+  text-align: center;
+}
+
+video, canvas {
+  width: 100%;
+  max-height: 60vh;
+  object-fit: cover;
+}
+
+h2 {
+  margin: 15px 0;
+}
+
+.buttons {
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  padding: 20px;
+  background: #000;
+}
+
+button {
+  flex: 1;
+  max-width: 150px;
+  padding: 15px;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: bold;
+  background-color: #ff7a00;
+  color: white;
+  cursor: pointer;
+}
+</style>
 </head>
+
 <body>
 
-<div class="container">
+<h2 id="status">Iniciando câmera...</h2>
+<h2 id="count">Quantidade: 0</h2>
 
-  <h2>🔩 Contador Inteligente</h2>
+<video id="video" autoplay playsinline></video>
+<canvas id="canvas" style="display:none;"></canvas>
 
-  <!-- STATUS -->
-  <p id="status">Inicializando câmera...</p>
-
-  <!-- ÁREA DE CAPTURA -->
-  <div class="camera-area">
-      <video id="video" autoplay playsinline></video>
-      <canvas id="canvas"></canvas>
-      <canvas id="templateCanvas" style="display:none;"></canvas>
-  </div>
-
-  <!-- RESULTADO -->
-  <div class="result">
-      <h3>Quantidade Detectada:</h3>
-      <div id="count">0</div>
-  </div>
-
-</div>
-
-<!-- BOTÕES FIXOS -->
 <div class="buttons">
-    <button id="btnCalibrate">🎯 Calibrar Modelo</button>
-    <button id="btnCapture">📸 Contar</button>
-    <button id="btnBack">🔄 Nova Captura</button>
+  <button onclick="capturar()">Capturar</button>
+  <button onclick="voltar()">Voltar</button>
 </div>
 
-<script src="script.js"></script>
+<script>
+let video = document.getElementById("video");
+let canvas = document.getElementById("canvas");
+let countText = document.getElementById("count");
+let statusText = document.getElementById("status");
+
+let streaming = false;
+
+cv['onRuntimeInitialized'] = () => {
+    statusText.innerText = "OpenCV carregado!";
+    iniciarCamera();
+};
+
+function iniciarCamera() {
+    navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" }
+    })
+    .then(stream => {
+        video.srcObject = stream;
+        streaming = true;
+        statusText.innerText = "Câmera pronta!";
+    })
+    .catch(err => {
+        statusText.innerText = "Erro ao acessar câmera";
+    });
+}
+
+function capturar() {
+
+    if (!streaming) {
+        alert("Câmera ainda não iniciou.");
+        return;
+    }
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    let ctx = canvas.getContext("2d");
+    ctx.drawImage(video, 0, 0);
+
+    processarImagem();
+}
+
+function processarImagem() {
+
+let src = cv.imread(canvas);
+let gray = new cv.Mat();
+let blur = new cv.Mat();
+let thresh = new cv.Mat();
+let morph = new cv.Mat();
+let contours = new cv.MatVector();
+let hierarchy = new cv.Mat();
+
+cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+
+cv.GaussianBlur(gray, blur, new cv.Size(7,7), 0);
+
+// Threshold invertido para fundo escuro
+cv.threshold(blur, thresh, 120, 255, cv.THRESH_BINARY);
+
+// Fecha falhas no parafuso
+let kernel = cv.getStructuringElement(
+    cv.MORPH_RECT,
+    new cv.Size(5,5)
+);
+
+cv.morphologyEx(
+    thresh,
+    morph,
+    cv.MORPH_CLOSE,
+    kernel
+);
+
+cv.findContours(
+    morph,
+    contours,
+    hierarchy,
+    cv.RETR_EXTERNAL,
+    cv.CHAIN_APPROX_SIMPLE
+);
+
+let count = 0;
+
+for (let i = 0; i < contours.size(); i++) {
+
+    let cnt = contours.get(i);
+    let area = cv.contourArea(cnt);
+
+    // ajuste fino aqui se precisar
+    if (area > 1500 && area < 80000) {
+
+        let rect = cv.boundingRect(cnt);
+
+        cv.rectangle(
+            src,
+            new cv.Point(rect.x, rect.y),
+            new cv.Point(rect.x + rect.width, rect.y + rect.height),
+            [0,255,0,255],
+            3
+        );
+
+        count++;
+    }
+
+    cnt.delete();
+}
+
+// Escreve na imagem
+cv.putText(
+    src,
+    "Quantidade: " + count,
+    new cv.Point(30, 60),
+    cv.FONT_HERSHEY_SIMPLEX,
+    1.5,
+    [255,0,0,255],
+    3
+);
+
+cv.imshow(canvas, src);
+
+video.style.display = "none";
+canvas.style.display = "block";
+
+src.delete();
+gray.delete();
+blur.delete();
+thresh.delete();
+morph.delete();
+contours.delete();
+hierarchy.delete();
+}
+
+function voltar() {
+    canvas.style.display = "none";
+    video.style.display = "block";
+    countText.innerText = "Quantidade: 0";
+}
+</script>
 
 </body>
 </html>
