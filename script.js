@@ -8,14 +8,12 @@ const btnBack = document.getElementById('btnBack');
 
 let opencvReady = false;
 
-// 🔥 Espera OpenCV carregar
 cv['onRuntimeInitialized'] = () => {
     opencvReady = true;
     statusText.innerText = "OpenCV carregado!";
     iniciarCamera();
 };
 
-// 📷 Iniciar câmera
 function iniciarCamera() {
     navigator.mediaDevices.getUserMedia({
         video: { facingMode: "environment" }
@@ -30,7 +28,6 @@ function iniciarCamera() {
     });
 }
 
-// 📸 CONTAR PARAFUSOS
 btnCapture.onclick = () => {
 
     if (!opencvReady) {
@@ -47,31 +44,23 @@ btnCapture.onclick = () => {
     let src = cv.imread(canvas);
     let gray = new cv.Mat();
     let blur = new cv.Mat();
-    let thresh = new cv.Mat();
+    let edges = new cv.Mat();
+    let kernel = cv.Mat.ones(3, 3, cv.CV_8U);
 
-    // 🔥 Converter para cinza
     cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
-
-    // 🔥 Aplicar blur para reduzir ruído
     cv.GaussianBlur(gray, blur, new cv.Size(5,5), 0);
 
-    // 🔥 Threshold adaptativo
-    cv.adaptiveThreshold(
-        blur,
-        thresh,
-        255,
-        cv.ADAPTIVE_THRESH_GAUSSIAN_C,
-        cv.THRESH_BINARY_INV,
-        11,
-        2
-    );
+    // 🔥 DETECÇÃO DE BORDAS
+    cv.Canny(blur, edges, 50, 150);
 
-    // 🔥 Encontrar contornos
+    // 🔥 DILATA PARA UNIR PARTES
+    cv.dilate(edges, edges, kernel);
+
     let contours = new cv.MatVector();
     let hierarchy = new cv.Mat();
 
     cv.findContours(
-        thresh,
+        edges,
         contours,
         hierarchy,
         cv.RETR_EXTERNAL,
@@ -85,20 +74,25 @@ btnCapture.onclick = () => {
         let cnt = contours.get(i);
         let area = cv.contourArea(cnt);
 
-        // 🔥 Filtra por área mínima (ajustável)
-        if (area > 500) {
+        if (area > 800 && area < 20000) {
 
             let rect = cv.boundingRect(cnt);
 
-            cv.rectangle(
-                src,
-                new cv.Point(rect.x, rect.y),
-                new cv.Point(rect.x + rect.width, rect.y + rect.height),
-                [255, 0, 0, 255],
-                2
-            );
+            let aspectRatio = rect.height / rect.width;
 
-            count++;
+            // 🔥 FILTRA OBJETOS ALONGADOS (formato parafuso)
+            if (aspectRatio > 2 || aspectRatio < 0.5) {
+
+                cv.rectangle(
+                    src,
+                    new cv.Point(rect.x, rect.y),
+                    new cv.Point(rect.x + rect.width, rect.y + rect.height),
+                    [0, 255, 0, 255],
+                    2
+                );
+
+                count++;
+            }
         }
 
         cnt.delete();
@@ -111,16 +105,15 @@ btnCapture.onclick = () => {
 
     cv.imshow(canvas, src);
 
-    // Limpeza de memória
     src.delete();
     gray.delete();
     blur.delete();
-    thresh.delete();
+    edges.delete();
     contours.delete();
     hierarchy.delete();
+    kernel.delete();
 };
 
-// 🔄 VOLTAR
 btnBack.onclick = () => {
     canvas.style.display = "none";
     video.style.display = "block";
