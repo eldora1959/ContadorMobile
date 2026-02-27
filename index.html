@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Contador de Parafusos</title>
+  <title>Contador Inteligente de Itens</title>
 
-  <!-- OpenCV (SEM async) -->
+  <!-- OpenCV -->
   <script src="https://docs.opencv.org/4.x/opencv.js"></script>
 
   <link rel="stylesheet" href="style.css">
@@ -14,23 +14,31 @@
 
 <div class="container">
 
-  <h2>Contador Inteligente</h2>
+  <h2>🔩 Contador Inteligente</h2>
 
-  <!-- CÂMERA -->
-  <video id="video" autoplay playsinline></video>
+  <!-- STATUS -->
+  <p id="status">Inicializando câmera...</p>
 
-  <!-- IMAGEM PROCESSADA -->
-  <canvas id="canvas" style="display:none;"></canvas>
-
-  <h3>Quantidade: <span id="count">0</span></h3>
-
-  <!-- BOTÕES -->
-  <div class="buttons">
-      <button id="btnCapture">📸 Capturar</button>
-      <button id="btnCalibrate">🎯 Calibrar</button>
-      <button id="btnBack">🔄 Nova Captura</button>
+  <!-- ÁREA DE CAPTURA -->
+  <div class="camera-area">
+      <video id="video" autoplay playsinline></video>
+      <canvas id="canvas"></canvas>
+      <canvas id="templateCanvas" style="display:none;"></canvas>
   </div>
 
+  <!-- RESULTADO -->
+  <div class="result">
+      <h3>Quantidade Detectada:</h3>
+      <div id="count">0</div>
+  </div>
+
+</div>
+
+<!-- BOTÕES FIXOS -->
+<div class="buttons">
+    <button id="btnCalibrate">🎯 Calibrar Modelo</button>
+    <button id="btnCapture">📸 Contar</button>
+    <button id="btnBack">🔄 Nova Captura</button>
 </div>
 
 <script src="script.js"></script>

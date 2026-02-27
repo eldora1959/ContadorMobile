@@ -1,171 +1,100 @@
-window.addEventListener("load", () => {
+const video = document.getElementById('video');
+const canvas = document.getElementById('canvas');
+const templateCanvas = document.getElementById('templateCanvas');
+const countDisplay = document.getElementById('count');
 
-  const video = document.getElementById("video");
-  const canvas = document.getElementById("canvas");
-  const countText = document.getElementById("count");
+const btnCapture = document.getElementById('btnCapture');
+const btnCalibrate = document.getElementById('btnCalibrate');
+const btnBack = document.getElementById('btnBack');
 
-  const btnCapture = document.getElementById("btnCapture");
-  const btnCalibrate = document.getElementById("btnCalibrate");
-  const btnBack = document.getElementById("btnBack");
+let templateMat = null;
 
-  let minArea = 800;
-  let circularityThreshold = 0.6;
-  let opencvReady = false;
+// INICIAR CÂMERA
+navigator.mediaDevices.getUserMedia({
+    video: { facingMode: "environment" }
+})
+.then(stream => {
+    video.srcObject = stream;
+})
+.catch(err => {
+    alert("Erro ao acessar câmera");
+});
 
-  // ===============================
-  // ESPERAR OPENCV
-  // ===============================
-  cv.onRuntimeInitialized = () => {
-      console.log("OpenCV pronto");
-      opencvReady = true;
-  };
 
-  // ===============================
-  // ATIVAR CÂMERA
-  // ===============================
-  navigator.mediaDevices.getUserMedia({
-      video: {
-          facingMode: { ideal: "environment" },
-          width: { ideal: 640 },
-          height: { ideal: 480 }
-      }
-  })
-  .then(stream => {
-      video.srcObject = stream;
-  })
-  .catch(err => {
-      alert("Erro ao acessar câmera: " + err);
-  });
+// 🎯 CAPTURAR MODELO
+btnCalibrate.onclick = () => {
+    const ctx = templateCanvas.getContext('2d');
+    templateCanvas.width = video.videoWidth;
+    templateCanvas.height = video.videoHeight;
+    ctx.drawImage(video, 0, 0);
 
-  // ===============================
-  // CAPTURAR
-  // ===============================
-  btnCapture.addEventListener("click", () => {
+    let src = cv.imread(templateCanvas);
+    cv.cvtColor(src, src, cv.COLOR_RGBA2GRAY);
 
-      if (!opencvReady) {
-          alert("OpenCV ainda carregando...");
-          return;
-      }
+    templateMat = src.clone();
+    alert("Modelo calibrado com sucesso!");
+};
 
-      const ctx = canvas.getContext("2d");
 
-      canvas.width = 640;
-      canvas.height = 480;
+// 📸 CAPTURAR E CONTAR
+btnCapture.onclick = () => {
 
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    if (!templateMat) {
+        alert("Calibre primeiro!");
+        return;
+    }
 
-      canvas.style.display = "block";
-      video.style.display = "none";
-
-      processImage();
-  });
-
-  // ===============================
-  // NOVA CAPTURA
-  // ===============================
-  btnBack.addEventListener("click", () => {
-
-      canvas.style.display = "none";
-      video.style.display = "block";
-      countText.innerText = "0";
-  });
-
-  // ===============================
-  // CALIBRAR
-  // ===============================
-  btnCalibrate.addEventListener("click", () => {
-
-      if (!opencvReady) {
-          alert("OpenCV ainda carregando...");
-          return;
-      }
-
-      calibrate();
-  });
-
-  // ===============================
-  // PROCESSAMENTO
-  // ===============================
-  function processImage() {
+    const ctx = canvas.getContext('2d');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    ctx.drawImage(video, 0, 0);
 
     let src = cv.imread(canvas);
     let gray = new cv.Mat();
-    let thresh = new cv.Mat();
-    let morph = new cv.Mat();
-
     cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
 
-    cv.GaussianBlur(gray, gray, new cv.Size(5,5), 0);
+    let result = new cv.Mat();
+    let mask = new cv.Mat();
 
-    cv.adaptiveThreshold(
-        gray,
-        thresh,
-        255,
-        cv.ADAPTIVE_THRESH_GAUSSIAN_C,
-        cv.THRESH_BINARY_INV,
-        15,
-        2
-    );
+    cv.matchTemplate(gray, templateMat, result, cv.TM_CCOEFF_NORMED, mask);
 
-    let kernel = cv.getStructuringElement(
-        cv.MORPH_RECT,
-        new cv.Size(2,2)
-    );
+    let threshold = 0.8;
+    let locations = [];
 
-    cv.morphologyEx(thresh, morph, cv.MORPH_OPEN, kernel);
-
-    let contours = new cv.MatVector();
-    let hierarchy = new cv.Mat();
-
-    cv.findContours(
-        morph,
-        contours,
-        hierarchy,
-        cv.RETR_EXTERNAL,
-        cv.CHAIN_APPROX_SIMPLE
-    );
-
-    let count = 0;
-
-    for (let i = 0; i < contours.size(); i++) {
-
-        let cnt = contours.get(i);
-        let area = cv.contourArea(cnt);
-
-        if (area < 900) continue;
-
-        let rect = cv.boundingRect(cnt);
-
-        let ratio = rect.width / rect.height;
-
-        // 🔥 Detectar formato alongado
-        if (ratio > 2 || ratio < 0.5) {
-
-            count++;
-
-            cv.rectangle(
-                src,
-                new cv.Point(rect.x, rect.y),
-                new cv.Point(rect.x + rect.width, rect.y + rect.height),
-                new cv.Scalar(0, 255, 0, 255),
-                2
-            );
+    for (let y = 0; y < result.rows; y++) {
+        for (let x = 0; x < result.cols; x++) {
+            let value = result.floatAt(y, x);
+            if (value >= threshold) {
+                locations.push({ x, y });
+            }
         }
     }
 
-    countText.innerText = count;
+    let count = 0;
+    locations.forEach(pt => {
+        count++;
+        cv.rectangle(
+            src,
+            new cv.Point(pt.x, pt.y),
+            new cv.Point(pt.x + templateMat.cols, pt.y + templateMat.rows),
+            [255, 0, 0, 255],
+            2
+        );
+    });
+
+    countDisplay.innerText = count;
 
     cv.imshow(canvas, src);
 
     src.delete();
     gray.delete();
-    thresh.delete();
-    morph.delete();
-    contours.delete();
-    hierarchy.delete();
-    kernel.delete();
-}
+    result.delete();
+    mask.delete();
+};
 
 
-
-});
+// 🔄 NOVA CAPTURA
+btnBack.onclick = () => {
+    canvas.style.display = "none";
+    countDisplay.innerText = 0;
+};
